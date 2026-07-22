@@ -1,0 +1,191 @@
+/* http://meyerweb.com/eric/tools/css/reset/ v2.0 | 20110126 License: none (public domain)*/
+/* HTML5 display-role reset for older browsers */
+html, body, div, span, applet, object, iframe,h1, h2, h3, h4, h5, h6, p, blockquote, pre,a, abbr, acronym, address, big, cite, code,del, dfn, em, img, ins, kbd, q, s, samp,small, strike, strong, sub, sup, tt, var,b, u, i, center,dl, dt, dd, ol, ul, li,fieldset, form, label, legend,table, caption, tbody, tfoot, thead, tr, th, td,article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary,time, mark, audio, video {margin: 0;padding: 0;border: 0;font-size: 100%;font: inherit;vertical-align: baseline;}
+article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {display: block;}
+body {line-height: 1;}ol, ul {list-style: none;}blockquote, q {quotes: none;}blockquote:before, blockquote:after,q:before, q:after {content: '';content: none;}table {border-collapse: collapse;border-spacing: 0;}
+
+/* body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; } */
+/* 模擬手機輸入的 UI 介面 */
+/* #ui-layer {position: absolute; bottom: 20px; left: 50%;transform: translateX(-50%); z-index: 100;text-align: center; background: rgba(255,255,255,0.1);padding: 20px; border-radius: 15px; backdrop-filter: blur(5px);}
+input {padding: 10px; width: 300px; border: none;border-radius: 5px; outline: none; font-size: 16px;}
+.label { color: white; margin-bottom: 10px; font-size: 14px; letter-spacing: 2px; } */
+
+body { 
+    margin: 0; 
+    overflow: hidden; 
+    background: #050505; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+}
+
+#ui-layer {
+    min-width: 400px;
+    position: absolute; 
+    bottom: 40px; 
+    left: 50%;
+    transform: translateX(-50%); 
+    z-index: 100;
+    text-align: center; 
+    background: rgba(255, 255, 255, 0.05);
+    padding: 30px 40px 20px; 
+    border-radius: 20px;
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px); /* 模糊 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.5s ease;
+}
+
+.label { 
+    color: rgb(255, 224, 123); 
+    margin-bottom: 15px; 
+    font-size: 16px; 
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px; 
+}
+
+.label_text{ 
+    color: rgba(255, 255, 255, .9); 
+    margin-bottom: 15px; 
+    font-size: 13px; 
+    text-transform: uppercase;
+    letter-spacing: 6px; 
+    border-bottom: 1px solid #ffffff5e;
+    padding: 0 0 15px;
+}
+
+#suggestion-tags {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* 滾動選單外層容器 */
+.scroll-picker-container {
+    position: relative;
+    height: 100px; /* 剛好容納約 3 個選項的高度 */
+    width: 100%;
+    margin: 20px auto;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory; /* 滑動停止時自動吸附 */
+    scrollbar-width: none; /* 針對 Firefox 以及較新版 Chrome 隱藏原生滾動條 (Firefox) */
+    -ms-overflow-style: none;/* 針對舊版 IE / Edge */
+}
+
+.scroll-picker-container::-webkit-scrollbar {
+    display: none; /* 隱藏原生滾動條 (Chrome/Safari) */
+}
+
+/* 滾動視覺遮罩：讓上下選項漸隱，中間突出 */
+.scroll-picker-mask {
+    position: absolute;top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; /* 讓滑鼠事件穿透，不影響滾動 */
+    z-index: 2;
+}
+
+/* 滾動列表內層 */
+.scroll-picker-list {
+    display: flex;
+    flex-direction: column;
+    padding: 0; /* 上下留白，確保首尾項目能滾動到正中間 */
+}
+
+/* 單個文字選項 */
+.tag-item {
+    height: 25px;
+    line-height: 25px;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    scroll-snap-align: center; /* 滾動吸附點設在方塊正中間 */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    -webkit-user-select: none;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 15px;
+}
+
+/* 懸浮或選中焦點時的亮白放大效果 */
+.tag-item:hover, .tag-item.active {
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 500;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
+.connect-arduino {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    margin-top: 15px;
+    padding-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+/* 按鈕樣式保持靠左 */
+.connect-arduino button {
+    margin: 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+/* 右側波形與 BPM 區域 */
+.heart-monitor-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+
+/* 波形 Canvas */
+#waveCanvas {
+    width: 210px;
+    height: 30px;
+    padding: 5px 0 0;
+}
+
+/* BPM 數值文字區 */
+.bpm-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Space Mono', monospace, sans-serif;
+    color: #ff3b5c;
+}
+
+.heart-icon {
+    font-size: 16px;
+    opacity: 0.5;
+    transition: transform 0.2s;
+}
+
+.heart-icon.beating {
+    opacity: 1;
+    transform: scale(1.3);
+}
+
+.bpm-value {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.bpm-unit {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

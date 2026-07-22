@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情緒神經元 - 原型 Demo</title>
+    <link rel="stylesheet" href="./default.css">
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="label">口是心非情緒神經元感測入口</div>
+        <div class="label_text">上下滾動，點選最有感的“違心話”</div>
+        
+        <!-- 滾動選擇器容器 -->
+        <div class="scroll-picker-container">
+            <div class="scroll-picker-mask"></div>
+            <div id="suggestion-tags" class="scroll-picker-list"></div>
+        </div>
+
+        <div class="connect-arduino">
+            <button id="connect-arduino">心率感測</button>
+            
+            <div class="heart-monitor-display" id="heartDisplay">
+                <canvas id="waveCanvas"></canvas>
+                <div class="bpm-info">
+                    <span class="heart-icon" id="heartIcon">❤️</span>
+                    <span class="bpm-value" id="bpmValue">--</span>
+                    <span class="bpm-unit">BPM</span>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module" src="./default.js"></script>
+
+    <!-- Tone.js 聲音庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+</body>
+</html>
