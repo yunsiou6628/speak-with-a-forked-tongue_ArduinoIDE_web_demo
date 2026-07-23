@@ -98,35 +98,74 @@ async function init() {
 function resetToDefaultState() {
     console.log("超過 15 秒無數據，自動重置為初始體驗畫面...");
 
-    // 清空心率數據歷史與數字
+    // 1. 停止目前的情緒音樂
+    stopCurrentEmotionAudio();
+    currentEmotion = null;
+
+    // 2. 清空心律資料
     bpmHistory = [];
     currentBPM = 75;
+    lastValidBPM = 75;
+
     const bpmValEl = document.getElementById('bpmValue');
     if (bpmValEl) bpmValEl.textContent = '--';
 
-    // 還原 Three.js 視覺參數到預設值
+    // 3. 還原 Three.js 視覺參數到預設值
     currentSpeedFactor = DEFAULT_SPEED_FACTOR;
     currentArousal = DEFAULT_AROUSAL;
     currentRange = DEFAULT_RANGE;
     particleCount = DEFAULT_PARTICLE_COUNT;
 
-    // 還原粒子數量與預設色彩 (白色/灰白色)
+    // 4. 恢復粒子數量、位置和顏色
     if (particles) {
         particles.setDrawRange(0, particleCount);
+
+        const positionAttribute = particles.attributes.position;
         const colorAttribute = particles.attributes.color;
+
         for (let i = 0; i < MAX_PARTICLES; i++) {
+            // 恢復成初始的隨機分布
+            positionAttribute.array[i * 3] =
+                Math.random() * r - r / 2;
+
+            positionAttribute.array[i * 3 + 1] =
+                Math.random() * r - r / 2;
+
+            positionAttribute.array[i * 3 + 2] =
+                Math.random() * r - r / 2;
+
+            // 恢復成白色
             colorAttribute.array[i * 3] = 1;
             colorAttribute.array[i * 3 + 1] = 1;
             colorAttribute.array[i * 3 + 2] = 1;
         }
+        positionAttribute.needsUpdate = true;
         colorAttribute.needsUpdate = true;
+        particles.computeBoundingSphere();
     }
 
-    // 還原背景顏色與連線顏色
-    if (scene) scene.background.setHex(0x000000);
-    if (material) material.color.setHex(0xffffff);
+    // 5. 恢復黑色背景和粒子大小
+    if (scene) {
+        scene.background.setHex(0x000000)
+        scene.traverse((object) => {
+            if (object instanceof THREE.Points) {
+                object.material.size = 15;
+                object.material.color.setHex(0xffffff);
+                object.material.needsUpdate = true;
+            }
+        });
+    };
 
-    // 清除文字選項的高亮狀態，並隨機換一批新的違心話台詞
+    // 6. 恢復粒子連線顏色
+    if (material) {
+        material.color.setHex(0xffffff)
+        material.opacity = 0.2;
+    };
+
+    // 7. 清除情緒文字選取狀態
+    clickCount = 0;
+
+    // 3. 清除文字選項的高亮狀態，並隨機換一批新的違心話台詞
     document.querySelectorAll('.tag-item').forEach(el => el.classList.remove('active'));
     refreshTags();
 }
@@ -159,13 +198,8 @@ function updateEmotionVisual(res) {
     particleCount = Math.floor(newCount);
     particles.setDrawRange(0, Math.min(particleCount, MAX_PARTICLES));
 
-    // 如果序列埠 reader 存在且正在讀取，就不由文字覆蓋速度與能量，確保點擊文字時，心率帶來的激烈流速不會突然斷掉
-    if (!reader) {
-        currentSpeedFactor = speedFactor;
-        currentArousal = a;
-    } else {
-        console.log("偵測到心率連線中，文字跳過覆蓋速度與能量，僅更新視覺色彩。");
-    }
+    currentSpeedFactor = speedFactor;
+    currentArousal = a;
 
     // 更新粒子顏色
     const particleTargetColor = new THREE.Color();
@@ -336,11 +370,13 @@ function processSerialData(data) {
                 if (bpmDisplay) {
                     bpmDisplay.innerText = currentBPM;
                 }
-
-                // 粒子速度與能量連動
-                currentSpeedFactor = 0.5 + (bpmValue / 70);
-                currentArousal = (bpmValue - 70) / 30;
-
+                // 有情緒，代表有點選文字
+                if(currentEmotion) {
+                    // 粒子速度與能量連動
+                    const avg = (bpmValue - 70)/1000; // 以 70 BPM 為基準，計算偏差比例
+                    currentSpeedFactor = currentSpeedFactor  * (1 + avg);
+                    currentArousal = currentArousal  * (1 + avg);
+                }
             } else {
                 console.warn(`收到異常心律數據，已自動過濾: ${bpmValue}`);
             }
@@ -671,7 +707,6 @@ function animate() {
             }
         }
     }
-
     // 告訴 Three.js 有多少線
     lineMesh.geometry.setDrawRange(0, lineIdx / 3);
     lineMesh.geometry.attributes.position.needsUpdate = true;

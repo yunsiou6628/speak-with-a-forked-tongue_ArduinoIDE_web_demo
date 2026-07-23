@@ -34,6 +34,24 @@ body {
     transition: all 0.5s ease;
 }
 
+/* input {
+    padding: 12px 20px; 
+    width: 550px; 
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border-radius: 30px; 
+    outline: none; 
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+input:focus {
+    border-color: #fff;
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+} */
+
 .label { 
     color: rgb(255, 224, 123); 
     margin-bottom: 15px; 
@@ -184,6 +202,31 @@ body {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.9);
 }
+
+/* .tag {
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 1px;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.tag:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tag:active {
+    transform: scale(0.95);
+} */
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
