@@ -10,6 +10,7 @@ const DEFAULT_PARTICLE_COUNT = 200;
 const DEFAULT_SPEED_FACTOR = 0.01;
 const DEFAULT_AROUSAL = 0;
 const DEFAULT_RANGE = 400;
+const INACTIVITY_TIMEOUT_MS = 15000;
 
 // --- 全域變數 ---
 let scene, camera, renderer, particles, material, particleData = [];
@@ -19,6 +20,7 @@ let currentArousal = DEFAULT_AROUSAL; // 記錄情緒能量
 let currentRange = DEFAULT_RANGE; // 全域範圍變數
 let emotionPool = []; // 儲存 JSON 數據
 let clickCount = 0;
+const usedEmotionTexts = new Set();
 let port, reader;  // 串Arduino-IDE
 // let pulseScale = 1.0;       // 當前粒子縮放比例 (正常為 1) - 心跳節奏震動控制變數
 // let targetScale = 1.0;      // 目標縮放比例 - 心跳節奏震動控制變數
@@ -28,8 +30,9 @@ let port, reader;  // 串Arduino-IDE
 let waveCanvas, waveCtx;    // 心律波長，開始畫面預設
 let bpmHistory = [];        // 預設清空，未連線前不載入偽數據，接收後儲存最近收到的 BPM 數據
 let isSerialConnected = false;     // 紀錄目前是否已成功連線並開始接收資料
-let lastValidBPM = 70;             // 紀錄上一次有效的 BPM 數值
-let lastDataReceivedTime = Date.now(); // 紀錄最後一次收到 Serial 資料的時間
+let lastValidBPM = 0;             // 紀錄上一次有效的 BPM 數值
+let lastDataReceivedTime = null; // 紀錄最後一次收到 Serial 資料的時間
+let lastEmotionInteractionTime = null;
 let currentBPM = 0;  // 避免 ReferenceError
 
 // Tone.js 聲音
@@ -101,11 +104,12 @@ function resetToDefaultState() {
     // 1. 停止目前的情緒音樂
     stopCurrentEmotionAudio();
     currentEmotion = null;
+    lastEmotionInteractionTime = null;
 
     // 2. 清空心律資料
     bpmHistory = [];
-    currentBPM = 75;
-    lastValidBPM = 75;
+    currentBPM = 0;
+    lastValidBPM = 0;
 
     const bpmValEl = document.getElementById('bpmValue');
     if (bpmValEl) bpmValEl.textContent = '--';
@@ -164,6 +168,7 @@ function resetToDefaultState() {
 
     // 7. 清除情緒文字選取狀態
     clickCount = 0;
+    usedEmotionTexts.clear();
 
     // 3. 清除文字選項的高亮狀態，並隨機換一批新的違心話台詞
     document.querySelectorAll('.tag-item').forEach(el => el.classList.remove('active'));
@@ -227,7 +232,11 @@ function refreshTags() {
 
     // 只從有 outerText 的情緒中，隨機取出 8 筆
     const selected = emotionPool
-        .filter((item) => typeof item?.text?.outerText === 'string' && item.text.outerText.trim())
+        .filter((item) =>
+            typeof item?.text?.outerText === 'string' &&
+            item.text.outerText.trim() &&
+            !usedEmotionTexts.has(item.text.outerText)
+        )
         .sort(() => 0.5 - Math.random())
         .slice(0, 8);
 
@@ -240,7 +249,8 @@ function refreshTags() {
         // 點擊事件監聽
         div.onclick = async () => {
             console.log("點擊了選項：", outerText);
-
+            lastEmotionInteractionTime = Date.now();
+            usedEmotionTexts.add(outerText);
             // 確保點擊時啟動聲音引擎
             if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
                 await Tone.start();
@@ -370,12 +380,16 @@ function processSerialData(data) {
                 if (bpmDisplay) {
                     bpmDisplay.innerText = currentBPM;
                 }
+                const diff = (bpmValue - 70)/100; // 以 70 BPM 為基準，計算偏差比例
+                const largeDiff = diff * 2;
                 // 有情緒，代表有點選文字
                 if(currentEmotion) {
                     // 粒子速度與能量連動
-                    const avg = (bpmValue - 70)/1000; // 以 70 BPM 為基準，計算偏差比例
-                    currentSpeedFactor = currentSpeedFactor  * (1 + avg);
-                    currentArousal = currentArousal  * (1 + avg);
+                    currentSpeedFactor = (currentEmotion.visual.speedFactor  * (1 + largeDiff)) * 0.7 + currentSpeedFactor * 0.3;
+                    currentArousal = (currentEmotion.visual.a  * (1 + largeDiff)) * 0.7 + currentArousal * 0.3;
+                }else{
+                    currentSpeedFactor = 0.75 * (1 + diff);
+                    currentArousal = 0.25 * (1 + diff);
                 }
             } else {
                 console.warn(`收到異常心律數據，已自動過濾: ${bpmValue}`);
@@ -386,9 +400,35 @@ function processSerialData(data) {
     }
 }
 
+function checkForInactivity() {
+    const now = Date.now();
+
+    // 必須真的收到過正常 BPM，而且資料仍在有效時間內
+    const hasRecentHeartRate =
+        lastValidBPM > 0 &&
+        now - lastDataReceivedTime <= INACTIVITY_TIMEOUT_MS;
+
+    // 必須選過情緒，而且操作仍在有效時間內
+    const hasRecentInteraction =
+        currentEmotion !== null &&
+        lastEmotionInteractionTime !== null &&
+        now - lastEmotionInteractionTime <= INACTIVITY_TIMEOUT_MS;
+
+    // 避免待機畫面一直重複呼叫 reset
+    const sessionStarted =
+        lastValidBPM > 0 ||
+        currentEmotion !== null;
+
+    return sessionStarted && !hasRecentHeartRate && !hasRecentInteraction
+}
+
 // 心率波形動畫/偵測心律數據
 function drawWaveform() {
     requestAnimationFrame(drawWaveform);
+
+    if (checkForInactivity()) {
+        resetToDefaultState();
+    }
     if (!waveCtx || !waveCanvas) return;
 
     const width = waveCanvas.width;
@@ -397,14 +437,6 @@ function drawWaveform() {
     // 每一幀繪製前一定要清空畫布，避免歷史畫痕疊加成紅塊
     waveCtx.clearRect(0, 0, width, height);
 
-    // 檢查是否超過 15 秒沒有收到感測器數據（代表沒人在測或離線）
-    const now = Date.now();
-    if (isSerialConnected && now - lastDataReceivedTime > 15000) {
-        // 若歷史紀錄還留著數據，說明是剛滿 15 秒的第一時間，觸發一次全域歸零
-        if (bpmHistory.length > 0) {
-            resetToDefaultState();
-        }
-    }
     // 未連線狀態 或 無數據時 - 顯示一條靜止平坦的待機灰線
     if (!isSerialConnected || bpmHistory.length < 2) {
         waveCtx.strokeStyle = '#2a2a3a';
@@ -503,6 +535,18 @@ function setupAudioEngine() {
         envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.3 }
     }).toDestination();
     noiseSynth.volume.value = -12;
+
+
+    // oscillator: {
+    //     type: "sine" // 波形可換: "triangle" (柔和木琴), "sawtooth" (明亮弦樂), "square" (復古電玩)
+    // },
+    // envelope: {
+    //     attack: 0.05,  // 聲響起頭速度 (秒)：越小越清脆(如擊樂)，越大越漸強(如弦樂)
+    //     decay: 0.2,   // 衰減時間
+    //     sustain: 0.3, // 琴音持續音量 (0~1)
+    //     release: 1.2  // 鬆開/結束後的餘音長度 (秒)
+    // }
+
 }
 
 
@@ -548,7 +592,9 @@ function playSingleEmotion(currentEmotion, startTime = Tone.Transport.seconds, i
     const notes = currentEmotion.music.notes
     const melody = currentEmotion.music.melody;
     const intervals = currentEmotion.music.intervals;
+    // =========================================================
     // 播放設定
+    // =========================================================
     const synth = isInner ? celloSynth : pianoSynth;
     const velocity = isInner ? 0.45 : 0.60;
     const startAt = Math.max(Number(startTime) || 0, Tone.Transport.seconds + 0.02);
@@ -707,6 +753,7 @@ function animate() {
             }
         }
     }
+
     // 告訴 Three.js 有多少線
     lineMesh.geometry.setDrawRange(0, lineIdx / 3);
     lineMesh.geometry.attributes.position.needsUpdate = true;
